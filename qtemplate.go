@@ -46,6 +46,10 @@ func (m *templateManager) Get(tplFiles []string) (*template.Template, error) {
 			files = append(files, filepath.Join(TemplateDir, tplFile))
 		}
 
+		if m.master == nil {
+			mgr.Master("master.html")
+		}
+
 		t, err = template.Must(m.master.Clone()).ParseFiles(files...)
 		if err != nil {
 			return nil, errors.Wrapf(err, "unable to parse template %q", tplFiles)
