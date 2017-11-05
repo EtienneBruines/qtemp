@@ -1,4 +1,4 @@
-package qtemplate
+package qtemp
 
 import (
 	"html/template"
