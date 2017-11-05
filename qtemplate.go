@@ -20,6 +20,7 @@ type templateManager struct {
 	templates map[string]*template.Template
 	master    *template.Template
 	mu        sync.RWMutex
+	handlers  []VariableHandler
 }
 
 func (m *templateManager) Master(tpl string) {
@@ -65,13 +66,21 @@ func Render(ctx *fasthttp.RequestCtx, data map[string]interface{}, tpl ...string
 	RenderWithStatus(ctx, data, fasthttp.StatusOK, tpl...)
 }
 
-func RenderWithStatus(ctx *fasthttp.RequestCtx, data map[string]interface{}, status int, tpl ...string) {
+func RenderWithStatus(ctx *fasthttp.RequestCtx, data Variables, status int, tpl ...string) {
 	t, err := mgr.Get(tpl)
 	if err != nil {
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
 		ctx.SetContentType("text/plain")
 		ctx.WriteString("Unable to parse template: " + err.Error())
 		return
+	}
+
+	if data == nil {
+		data = make(map[string]interface{})
+	}
+
+	for _, h := range mgr.handlers {
+		data = h(ctx, data)
 	}
 
 	err = t.Execute(ctx, data)
@@ -84,4 +93,11 @@ func RenderWithStatus(ctx *fasthttp.RequestCtx, data map[string]interface{}, sta
 
 	ctx.SetStatusCode(status)
 	ctx.SetContentType("text/html")
+}
+
+type Variables = map[string]interface{}
+type VariableHandler = func(ctx *fasthttp.RequestCtx, p Variables) Variables
+
+func RegisterHandler(handler VariableHandler) {
+	mgr.handlers = append(mgr.handlers, handler)
 }
